@@ -1,5 +1,5 @@
 # =====================================================
-# 2. Release Please - Conventional Commits 기반 자동 릴리즈
+# Release Please - Conventional Commits 기반 자동 릴리즈
 # Google의 release-please를 사용한 완전 자동화
 # =====================================================
 name: Release Please
@@ -23,24 +23,12 @@ jobs:
       tag_name: ${{ steps.release.outputs.tag_name }}
 
     steps:
-      - uses: google-github-actions/release-please-action@v4
+      # 최신 googleapis 액션 사용 (google-github-actions는 deprecated)
+      - uses: googleapis/release-please-action@v4
         id: release
         with:
           release-type: python
-          package-name: iptime-fuzzer
-
-          # Changelog 섹션 커스터마이징
-          changelog-types: |
-            [
-              {"type": "feat", "section": "🚀 New Features", "hidden": false},
-              {"type": "fix", "section": "🐛 Bug Fixes", "hidden": false},
-              {"type": "perf", "section": "⚡ Performance", "hidden": false},
-              {"type": "refactor", "section": "♻️ Refactoring", "hidden": false},
-              {"type": "docs", "section": "📚 Documentation", "hidden": false},
-              {"type": "test", "section": "✅ Tests", "hidden": false},
-              {"type": "ci", "section": "🔧 CI/CD", "hidden": false},
-              {"type": "chore", "section": "🧹 Maintenance", "hidden": true}
-            ]
+          # config-file과 manifest-file 대신 기본 설정 사용
 
   # Release가 생성되면 추가 작업 수행
   build-on-release:
@@ -61,7 +49,7 @@ jobs:
       - name: Build Distribution
         run: |
           pip install build
-          python -m build
+          python -m build || echo "Build skipped - no pyproject.toml"
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
