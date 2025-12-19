@@ -4,21 +4,21 @@ ipTIME Firmware Fuzzer v2.0 - Protocols
 """
 
 from .iptime_protocol import (
-    FieldType,
     FieldSpec,
-    MessageSpec,
-    IPTimeUDPSpec,
+    FieldType,
     HTTPSpec,
-    UPnPSpec,
+    IPTimeUDPSpec,
+    MessageSpec,
     ProtocolFactory,
+    UPnPSpec,
 )
 
 __all__ = [
-    'FieldType',
-    'FieldSpec',
-    'MessageSpec',
-    'IPTimeUDPSpec',
-    'HTTPSpec',
-    'UPnPSpec',
-    'ProtocolFactory',
+    "FieldType",
+    "FieldSpec",
+    "MessageSpec",
+    "IPTimeUDPSpec",
+    "HTTPSpec",
+    "UPnPSpec",
+    "ProtocolFactory",
 ]

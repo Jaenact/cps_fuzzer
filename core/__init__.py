@@ -7,37 +7,37 @@ from .controller import FuzzerController, main
 
 try:
     from .scheduler import (
-        ScheduleStrategy,
+        AdaptiveScheduler,
         CorpusEntry,
         EnergyScheduler,
-        AdaptiveScheduler,
+        ScheduleStrategy,
     )
 except ImportError:
     pass
 
 try:
     from .distributed import (
-        NodeInfo,
-        SharedCrash,
-        RedisCoordinator,
         LocalCoordinator,
+        NodeInfo,
+        RedisCoordinator,
+        SharedCrash,
         create_coordinator,
     )
 except ImportError:
     pass
 
 __all__ = [
-    'FuzzerController',
-    'main',
+    "FuzzerController",
+    "main",
     # Scheduler
-    'ScheduleStrategy',
-    'CorpusEntry',
-    'EnergyScheduler',
-    'AdaptiveScheduler',
+    "ScheduleStrategy",
+    "CorpusEntry",
+    "EnergyScheduler",
+    "AdaptiveScheduler",
     # Distributed
-    'NodeInfo',
-    'SharedCrash',
-    'RedisCoordinator',
-    'LocalCoordinator',
-    'create_coordinator',
+    "NodeInfo",
+    "SharedCrash",
+    "RedisCoordinator",
+    "LocalCoordinator",
+    "create_coordinator",
 ]

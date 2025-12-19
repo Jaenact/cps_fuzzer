@@ -4,17 +4,17 @@ ipTIME Firmware Fuzzer v2.0 - Fuzzers
 """
 
 from .base import BaseFuzzer, FuzzCase, FuzzResult
-from .udp_fuzzer import UDPFuzzer
 from .http_fuzzer import HTTPFuzzer
-from .upnp_fuzzer import UPnPFuzzer
 from .pptp_fuzzer import PPTPFuzzer
+from .udp_fuzzer import UDPFuzzer
+from .upnp_fuzzer import UPnPFuzzer
 
 __all__ = [
-    'BaseFuzzer',
-    'FuzzCase',
-    'FuzzResult',
-    'UDPFuzzer',
-    'HTTPFuzzer',
-    'UPnPFuzzer',
-    'PPTPFuzzer',
+    "BaseFuzzer",
+    "FuzzCase",
+    "FuzzResult",
+    "UDPFuzzer",
+    "HTTPFuzzer",
+    "UPnPFuzzer",
+    "PPTPFuzzer",
 ]

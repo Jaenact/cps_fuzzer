@@ -7,16 +7,17 @@ Flask + WebSocket으로 실시간 통계, 크래시 타임라인,
 """
 
 import json
-import time
 import threading
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass, field, asdict
+import time
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 try:
-    from flask import Flask, render_template_string, jsonify, request
+    from flask import Flask, jsonify, render_template_string, request
     from flask_socketio import SocketIO, emit
+
     FLASK_AVAILABLE = True
 except ImportError:
     FLASK_AVAILABLE = False
@@ -26,9 +27,11 @@ except ImportError:
 # 통계 데이터 모델
 # ============================================================
 
+
 @dataclass
 class FuzzerStats:
     """퍼저 통계"""
+
     name: str
     total_cases: int = 0
     unique_crashes: int = 0
@@ -44,13 +47,14 @@ class FuzzerStats:
 @dataclass
 class GlobalStats:
     """전체 통계"""
+
     start_time: float = field(default_factory=time.time)
     total_cases: int = 0
     total_crashes: int = 0
     total_interesting: int = 0
     total_corpus: int = 0
     fuzzers: Dict[str, FuzzerStats] = field(default_factory=dict)
-    
+
     # 타임라인 데이터
     crash_timeline: List[Dict[str, Any]] = field(default_factory=list)
     coverage_timeline: List[Dict[str, Any]] = field(default_factory=list)
@@ -459,145 +463,131 @@ DASHBOARD_TEMPLATE = """
 # 대시보드 서버
 # ============================================================
 
+
 class WebDashboard:
     """
     실시간 웹 대시보드
-    
+
     Flask + SocketIO 기반 실시간 모니터링.
     """
-    
+
     def __init__(self, host: str = "127.0.0.1", port: int = 8888):
         if not FLASK_AVAILABLE:
             raise ImportError("Flask and Flask-SocketIO required. Install with: pip install flask flask-socketio")
-        
+
         self.host = host
         self.port = port
         self.stats = GlobalStats()
-        
+
         # Flask 앱 설정
         self.app = Flask(__name__)
-        self.app.config['SECRET_KEY'] = 'fuzzer_dashboard_secret'
+        self.app.config["SECRET_KEY"] = "fuzzer_dashboard_secret"
         self.socketio = SocketIO(self.app, cors_allowed_origins="*")
-        
+
         self._setup_routes()
         self._running = False
         self._thread = None
-    
+
     def _setup_routes(self):
         """라우트 설정"""
-        
-        @self.app.route('/')
+
+        @self.app.route("/")
         def index():
             return render_template_string(DASHBOARD_TEMPLATE)
-        
-        @self.app.route('/api/stats')
+
+        @self.app.route("/api/stats")
         def api_stats():
-            return jsonify({
-                'total_cases': self.stats.total_cases,
-                'total_crashes': self.stats.total_crashes,
-                'total_interesting': self.stats.total_interesting,
-                'total_corpus': self.stats.total_corpus,
-                'elapsed': time.time() - self.stats.start_time,
-                'fuzzers': {
-                    name: asdict(stats) 
-                    for name, stats in self.stats.fuzzers.items()
+            return jsonify(
+                {
+                    "total_cases": self.stats.total_cases,
+                    "total_crashes": self.stats.total_crashes,
+                    "total_interesting": self.stats.total_interesting,
+                    "total_corpus": self.stats.total_corpus,
+                    "elapsed": time.time() - self.stats.start_time,
+                    "fuzzers": {name: asdict(stats) for name, stats in self.stats.fuzzers.items()},
                 }
-            })
-        
-        @self.app.route('/api/crashes')
+            )
+
+        @self.app.route("/api/crashes")
         def api_crashes():
             return jsonify(self.stats.crash_timeline[-100:])
-        
-        @self.socketio.on('connect')
+
+        @self.socketio.on("connect")
         def handle_connect():
             # 현재 상태 전송
-            emit('stats_update', self._get_stats_dict())
-    
+            emit("stats_update", self._get_stats_dict())
+
     def _get_stats_dict(self) -> Dict[str, Any]:
         """통계 딕셔너리 반환"""
         return {
-            'total_cases': self.stats.total_cases,
-            'total_crashes': self.stats.total_crashes,
-            'total_interesting': self.stats.total_interesting,
-            'total_corpus': self.stats.total_corpus,
-            'fuzzers': {
-                name: asdict(stats) 
-                for name, stats in self.stats.fuzzers.items()
-            }
+            "total_cases": self.stats.total_cases,
+            "total_crashes": self.stats.total_crashes,
+            "total_interesting": self.stats.total_interesting,
+            "total_corpus": self.stats.total_corpus,
+            "fuzzers": {name: asdict(stats) for name, stats in self.stats.fuzzers.items()},
         }
-    
-    def update_stats(self, 
-                     fuzzer_name: str,
-                     total_cases: int = 0,
-                     unique_crashes: int = 0,
-                     interesting: int = 0,
-                     corpus_size: int = 0,
-                     exec_per_sec: float = 0.0):
+
+    def update_stats(
+        self,
+        fuzzer_name: str,
+        total_cases: int = 0,
+        unique_crashes: int = 0,
+        interesting: int = 0,
+        corpus_size: int = 0,
+        exec_per_sec: float = 0.0,
+    ):
         """퍼저 통계 업데이트"""
         if fuzzer_name not in self.stats.fuzzers:
             self.stats.fuzzers[fuzzer_name] = FuzzerStats(name=fuzzer_name)
-        
+
         fs = self.stats.fuzzers[fuzzer_name]
         fs.total_cases = total_cases
         fs.unique_crashes = unique_crashes
         fs.interesting = interesting
         fs.corpus_size = corpus_size
         fs.exec_per_sec = exec_per_sec
-        
+
         # 전체 통계 업데이트
         self.stats.total_cases = sum(f.total_cases for f in self.stats.fuzzers.values())
         self.stats.total_crashes = sum(f.unique_crashes for f in self.stats.fuzzers.values())
         self.stats.total_interesting = sum(f.interesting for f in self.stats.fuzzers.values())
         self.stats.total_corpus = sum(f.corpus_size for f in self.stats.fuzzers.values())
-        
+
         # WebSocket으로 브로드캐스트
         if self._running:
-            self.socketio.emit('stats_update', self._get_stats_dict())
-    
-    def report_crash(self, 
-                     protocol: str,
-                     crash_hash: str,
-                     description: str = ""):
+            self.socketio.emit("stats_update", self._get_stats_dict())
+
+    def report_crash(self, protocol: str, crash_hash: str, description: str = ""):
         """크래시 리포트"""
         crash_data = {
-            'timestamp': time.time(),
-            'protocol': protocol,
-            'hash': crash_hash,
-            'description': description,
+            "timestamp": time.time(),
+            "protocol": protocol,
+            "hash": crash_hash,
+            "description": description,
         }
-        
+
         self.stats.crash_timeline.append(crash_data)
-        
+
         # WebSocket으로 알림
         if self._running:
-            self.socketio.emit('crash', crash_data)
-    
+            self.socketio.emit("crash", crash_data)
+
     def start(self, threaded: bool = True):
         """대시보드 시작"""
         self._running = True
-        
+
         if threaded:
             self._thread = threading.Thread(
                 target=lambda: self.socketio.run(
-                    self.app, 
-                    host=self.host, 
-                    port=self.port,
-                    debug=False,
-                    use_reloader=False,
-                    log_output=False
+                    self.app, host=self.host, port=self.port, debug=False, use_reloader=False, log_output=False
                 ),
-                daemon=True
+                daemon=True,
             )
             self._thread.start()
             print(f"[*] Dashboard started at http://{self.host}:{self.port}")
         else:
-            self.socketio.run(
-                self.app,
-                host=self.host,
-                port=self.port,
-                debug=False
-            )
-    
+            self.socketio.run(self.app, host=self.host, port=self.port, debug=False)
+
     def stop(self):
         """대시보드 중지"""
         self._running = False
@@ -607,50 +597,53 @@ class WebDashboard:
 # 콘솔 대시보드 (Flask 없을 때 대체)
 # ============================================================
 
+
 class ConsoleDashboard:
     """콘솔 기반 대시보드 (Flask 없을 때)"""
-    
+
     def __init__(self):
         self.stats = GlobalStats()
         self._running = False
-    
+
     def update_stats(self, fuzzer_name: str, **kwargs):
         """통계 업데이트"""
         if fuzzer_name not in self.stats.fuzzers:
             self.stats.fuzzers[fuzzer_name] = FuzzerStats(name=fuzzer_name)
-        
+
         fs = self.stats.fuzzers[fuzzer_name]
         for key, value in kwargs.items():
             if hasattr(fs, key):
                 setattr(fs, key, value)
-        
+
         self.stats.total_cases = sum(f.total_cases for f in self.stats.fuzzers.values())
         self.stats.total_crashes = sum(f.unique_crashes for f in self.stats.fuzzers.values())
-    
+
     def report_crash(self, protocol: str, crash_hash: str, description: str = ""):
         """크래시 리포트"""
         print(f"\n[!] CRASH: [{protocol}] {crash_hash} - {description}")
-    
+
     def print_stats(self):
         """통계 출력"""
         elapsed = time.time() - self.stats.start_time
         rate = self.stats.total_cases / elapsed if elapsed > 0 else 0
-        
-        print(f"\r[STATS] Cases: {self.stats.total_cases:,} | "
-              f"Crashes: {self.stats.total_crashes} | "
-              f"Rate: {rate:.1f}/s", end='', flush=True)
-    
+
+        print(
+            f"\r[STATS] Cases: {self.stats.total_cases:,} | "
+            f"Crashes: {self.stats.total_crashes} | "
+            f"Rate: {rate:.1f}/s",
+            end="",
+            flush=True,
+        )
+
     def start(self, threaded: bool = True):
         self._running = True
-    
+
     def stop(self):
         self._running = False
 
 
 # 팩토리 함수
-def create_dashboard(web: bool = True, 
-                     host: str = "127.0.0.1", 
-                     port: int = 8888):
+def create_dashboard(web: bool = True, host: str = "127.0.0.1", port: int = 8888):
     """대시보드 생성"""
     if web and FLASK_AVAILABLE:
         return WebDashboard(host, port)
