@@ -1,0 +1,119 @@
+# =====================================================
+# 4. Security Scanning - 보안 취약점 스캔
+# 의존성 및 코드 보안 검사
+# =====================================================
+name: Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # 매주 월요일 09:00 UTC에 실행
+    - cron: "0 9 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  # ===== 의존성 취약점 스캔 =====
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Safety
+        run: pip install safety pip-audit
+
+      - name: Run Safety Check
+        continue-on-error: true
+        run: |
+          pip install -r requirements.txt
+          safety check --full-report || echo "::warning::Dependency vulnerabilities found"
+
+      - name: Run Pip Audit
+        continue-on-error: true
+        run: |
+          pip-audit || echo "::warning::Pip audit found issues"
+
+  # ===== 코드 보안 스캔 (Bandit) =====
+  code-scan:
+    name: Code Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Bandit
+        run: pip install bandit[toml]
+
+      - name: Run Bandit Security Scan
+        continue-on-error: true
+        run: |
+          bandit -r . -ll -ii -x ./tests,./venv,./.git \
+            --format json --output bandit-report.json || true
+          bandit -r . -ll -ii -x ./tests,./venv,./.git \
+            --format txt || echo "::warning::Security issues found"
+
+      - name: Upload Bandit Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-security-report
+          path: bandit-report.json
+          retention-days: 30
+
+  # ===== CodeQL 분석 =====
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: python
+          queries: security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v2
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          category: "/language:python"
+
+  # ===== Secret 스캔 =====
+  secret-scan:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,128 @@
+# =====================================================
+# 3. CI Pipeline - 테스트 및 린팅
+# PR 및 푸시 시 자동 검증
+# =====================================================
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # ===== 테스트 =====
+  test:
+    name: Test Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        include:
+          - os: windows-latest
+            python-version: "3.11"
+          - os: macos-latest
+            python-version: "3.11"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run Tests
+        run: |
+          python tests/test_v2.py
+
+      - name: Run Pytest (if exists)
+        continue-on-error: true
+        run: |
+          pytest tests/ -v --cov=. --cov-report=xml || true
+
+      - name: Upload Coverage
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+
+  # ===== 린팅 =====
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Linters
+        run: |
+          pip install flake8 black isort mypy
+
+      - name: Run Flake8
+        continue-on-error: true
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=15 --max-line-length=120 --statistics
+
+      - name: Check Black Formatting
+        continue-on-error: true
+        run: |
+          black --check --diff . || echo "::warning::Code formatting issues detected"
+
+      - name: Check Import Sorting
+        continue-on-error: true
+        run: |
+          isort --check-only --diff . || echo "::warning::Import sorting issues detected"
+
+      - name: Run MyPy Type Check
+        continue-on-error: true
+        run: |
+          mypy --ignore-missing-imports --no-error-summary . || true
+
+  # ===== 문법 검증 =====
+  syntax:
+    name: Syntax Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate Python Syntax
+        run: |
+          python -m py_compile main.py
+          python -m py_compile core/*.py
+          python -m py_compile fuzzers/*.py
+          python -m py_compile mutators/*.py
+          python -m py_compile monitors/*.py
+          python -m py_compile protocols/*.py
+          python -m py_compile harness/*.py
+          echo "✅ All Python files have valid syntax"
