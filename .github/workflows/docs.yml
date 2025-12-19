@@ -43,7 +43,7 @@ jobs:
             --force || echo "::warning::Some modules failed to document"
 
       - name: Upload Documentation Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: api-documentation
           path: docs/
