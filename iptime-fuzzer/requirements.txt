@@ -1,0 +1,4 @@
+# ipTIME Firmware Fuzzer
+# Python dependencies
+
+pyyaml>=6.0

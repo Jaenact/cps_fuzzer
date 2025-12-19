@@ -1,0 +1,32 @@
+# ipTIME Firmware Fuzzer - Test Configuration
+# Mock Server용 테스트 설정
+
+target:
+  host: "127.0.0.1"
+
+fuzzers:
+  udp:
+    enabled: true
+    port: 9999
+    timeout: 1.0
+    max_iterations: 100
+    delay: 0.0
+  
+  http:
+    enabled: true
+    port: 8080        # Mock HTTP 포트
+    timeout: 1.0
+    max_iterations: 100
+    delay: 0.0
+  
+  upnp:
+    enabled: true
+    http_port: 5000
+    timeout: 1.0
+    max_iterations: 100
+    delay: 0.0
+
+monitoring:
+  crash_dir: "./reports/crashes_test"
+  log_dir: "./reports/logs_test"
+  coverage_enabled: false
