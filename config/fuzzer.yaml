@@ -1,0 +1,38 @@
+# ipTIME Firmware Fuzzer Configuration
+# 전역 설정 파일
+
+target:
+  host: "192.168.0.1"          # 타겟 IP (실제 장비 또는 QEMU)
+
+fuzzers:
+  udp:
+    enabled: true
+    port: 9999                  # UDPserver 포트 (리버싱으로 확인 필요)
+    timeout: 5.0
+    max_iterations: 50000
+    delay: 0.01                 # 요청 간 딜레이 (초)
+  
+  http:
+    enabled: true
+    port: 80
+    timeout: 10.0
+    max_iterations: 50000
+    delay: 0.05
+  
+  upnp:
+    enabled: true
+    http_port: 5000             # UPnP HTTP 포트
+    timeout: 5.0
+    max_iterations: 25000
+    delay: 0.02
+
+monitoring:
+  crash_dir: "./reports/crashes"
+  log_dir: "./reports/logs"
+  coverage_enabled: false       # 코드 커버리지 (QEMU 환경에서만)
+
+corpus:
+  udp_seeds: "./corpus/udp"
+  http_seeds: "./corpus/http"
+  upnp_seeds: "./corpus/upnp"
+  pptp_seeds: "./corpus/pptp"

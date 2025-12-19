@@ -1,0 +1,23 @@
+# ipTIME Firmware Fuzzer v2.0 Requirements
+
+# Core
+PyYAML>=6.0
+
+# Web Dashboard (optional)
+flask>=2.0.0
+flask-socketio>=5.0.0
+python-socketio>=5.0.0
+
+# Distributed Fuzzing (optional)
+redis>=4.0.0
+
+# Coverage Analysis (optional)
+# (requires QEMU separately installed)
+
+# Development
+pytest>=7.0.0
+pytest-cov>=4.0.0
+mypy>=1.0.0
+
+# Utilities
+requests>=2.25.0
